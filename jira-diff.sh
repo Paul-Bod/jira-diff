@@ -4,9 +4,11 @@ SVNDELIM="==================================================================="
 EXPORT=false
 LDPWRITERSVN="https://repo.dev.bbc.co.uk/services/linked-data/linked-data-writer/trunk/"
 LDPCORESVN="https://repo.dev.bbc.co.uk/services/linked-data/linked-data-core-api/trunk"
+LDPMANAGERSVN="https://repo.dev.bbc.co.uk/services/linked-data/linked-data-manager/trunk/"
 LDPDIFFDIR="./ldpdiff"
 LDPWRITER="WRITER"
 LDPCORE="CORE"
+LDPMANAGER="MANAGER"
 
 function echo_help {
   echo "Usage:"
@@ -65,6 +67,7 @@ function cleanUp {
 function retrieveSvnLog {
   WRITERLOG=`svn log $LDPWRITERSVN`
   CORELOG=`svn log $LDPCORESVN`
+  MANAGERLOG=`svn log $LDPMANAGERSVN`
 }
 
 function writeTicketRevisions {
@@ -73,6 +76,9 @@ r/g' | grep "\[LINKEDDATA\-$TICKET\]" | sed 's/r\([0-9]*\) \|.*/\1/g' > $LDPDIFF
 
   echo $CORELOG | sed 's/\- r/\-\
 r/g' | grep "\[LINKEDDATA\-$TICKET\]" | sed 's/r\([0-9]*\) \|.*/\1/g' > $LDPDIFFDIR/ldpcorelog.txt
+
+  echo $MANAGERLOG | sed 's/\- r/\-\
+r/g' | grep "\[LINKEDDATA\-$TICKET\]" | sed 's/r\([0-9]*\) \|.*/\1/g' > $LDPDIFFDIR/ldpmanagerlog.txt
 }
 
 #
@@ -85,6 +91,8 @@ function writeDiffRevisions {
     local log=$WRITERLOG
   elif [ "$3" == "$LDPCORE" ]; then
     local log=$CORELOG
+  elif [ "$3" == "$LDPMANAGER" ]; then
+    local log=$MANAGERLOG
   else
     echo "Invalid project"
     exit
@@ -122,6 +130,8 @@ function createDiffs {
     local repo=$LDPWRITERSVN
   elif [ "$2" == "$LDPCORE" ]; then
     local repo=$LDPCORESVN
+  elif [ "$2" == "$LDPMANAGER" ]; then
+    local repo=$LDPMANAGERSVN
   else
     echo "Invalid project"
     exit
@@ -153,9 +163,10 @@ writeTicketRevisions
 
 catwriterlog=`cat $LDPDIFFDIR/ldpwriterlog.txt`
 catcorelog=`cat $LDPDIFFDIR/ldpcorelog.txt`
+catmanagerlog=`cat $LDPDIFFDIR/ldpmanagerlog.txt`
 
-if [ -z "$catwriterlog" ] && [ -z "$catcorelog" ]; then
-  echo "No commits found in ldp-writer or ldp-core for LINKEDDATA-$TICKET"
+if [ -z "$catwriterlog" ] && [ -z "$catcorelog" ] && [ -z "$catmanagerlog" ]; then
+  echo "No commits found in ldp-writer, ldp-core or ldp-manager for LINKEDDATA-$TICKET"
   exit
 fi
 
@@ -171,6 +182,13 @@ if [ ! -z "$catcorelog" ]; then
   echo "Found ldp-core commits for LINKEDDATA-$TICKET"
   writeDiffRevisions "ldpcorelog.txt" "ldpcorerevisions.txt" $LDPCORE
   createDiffs "ldpcorerevisions.txt" $LDPCORE
+fi
+
+if [ ! -z "$catmanagerlog" ]; then
+  echo $SVNDELIM
+  echo "Found ldp-manager commits for LINKEDDATA-$TICKET"
+  writeDiffRevisions "ldpmanagerlog.txt" "ldpmanagerrevisions.txt" $LDPMANAGER
+  createDiffs "ldpmanagerrevisions.txt" $LDPMANAGER
 fi
 
 if $EXPORT; then
